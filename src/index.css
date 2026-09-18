@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,300;1,9..144,400&family=Outfit:wght@300;400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+}
+
+:root {
+  --background: #f4f5f7;
+  --foreground: #0f1729;
+  --card: #ffffff;
+  --card-foreground: #0f1729;
+  --primary: #3b4fd8;
+  --primary-foreground: #ffffff;
+  --secondary: #e8eaf6;
+  --secondary-foreground: #3b4fd8;
+  --muted: #eef0f5;
+  --muted-foreground: #4b5563;
+  --accent: #6366f1;
+  --accent-foreground: #ffffff;
+  --border: #e2e5ed;
+  --ring: #3b4fd8;
+  --radius: 12px;
+  --sidebar: #0f1729;
+  --sidebar-fg: #e8eaf6;
+  --sidebar-muted: #8892a4;
+}
+
+.dark {
+  --background: #0a0d1a;
+  --foreground: #e8eaf6;
+  --card: #111827;
+  --card-foreground: #e8eaf6;
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --secondary: #1e2235;
+  --secondary-foreground: #a5b4fc;
+  --muted: #1a1f2e;
+  --muted-foreground: #9ca3af;
+  --accent: #818cf8;
+  --accent-foreground: #0f1729;
+  --border: #1e2641;
+  --ring: #6366f1;
+  --sidebar: #070a14;
+  --sidebar-fg: #e8eaf6;
+  --sidebar-muted: #6b7280;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.font-display {
+  font-family: 'Fraunces', serif;
+}
+
+/* Hide scrollbars by default */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+
+button, input, textarea, select {
+  transition: all 0.15s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

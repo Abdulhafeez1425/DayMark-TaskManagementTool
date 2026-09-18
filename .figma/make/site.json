@@ -1,0 +1,10 @@
+{
+  "description": "Organize tasks efficiently with daily motivational quotes to inspire productivity and keep users focused throughout their day.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
