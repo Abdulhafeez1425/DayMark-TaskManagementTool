@@ -6,6 +6,224 @@ import {
   useContext,
   useCallback,
 } from "react"
+import { createClient } from "@supabase/supabase-js"
+
+const supabaseUrl =
+  import.meta.env.VITE_SUPABASE_URL ??
+  "https://snkdhcqmpmfpvyrmhfya.supabase.co"
+const supabaseAnonKey =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ??
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNua2RoY3FtcG1mcHZ5cm1oZnlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MTM1NzMsImV4cCI6MjEwNTM4OTU3M30.LSMQyxlR4qGbHxXCvppU3D6pgJa4ZCkyla2QiKM1izs"
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+})
+
+const profileFromUser = (
+  user?: { email?: string | null; user_metadata?: Record<string, unknown> } | null,
+): UserProfile => ({
+  name:
+    typeof user?.user_metadata?.full_name === "string"
+      ? user.user_metadata.full_name
+      : typeof user?.user_metadata?.name === "string"
+        ? user.user_metadata.name
+        : typeof user?.email === "string"
+          ? user.email.split("@")[0].replace(/[._-]+/g, " ")
+          : "Alex",
+  isGuest: false,
+  mode: "mix",
+  decisionStyle: "important",
+  supportNeeds: ["Clear next action"],
+})
+
+const profileFromRow = (row?: {
+  display_name?: string | null
+  timezone?: string | null
+  locale?: string | null
+  plan?: string | null
+  onboarding_status?: string | null
+} | null): UserProfile => ({
+  name: row?.display_name || "Alex",
+  isGuest: false,
+  mode: "mix",
+  decisionStyle: "important",
+  supportNeeds: ["Clear next action"],
+})
+
+const taskFromRow = (row: {
+  id: string
+  title?: string | null
+  notes?: string | null
+  status?: string | null
+  priority?: string | null
+  due_at?: string | null
+  completed_at?: string | null
+  is_next_action?: boolean | null
+  created_at?: string | null
+  updated_at?: string | null
+  client_id?: string | null
+  deleted_at?: string | null
+}): Task => {
+  let parsed: Record<string, unknown> = {}
+  if (row.notes) {
+    try {
+      parsed = JSON.parse(row.notes)
+    } catch {
+      parsed = {}
+    }
+  }
+
+  const project = typeof parsed.project === "string" ? parsed.project : "Personal"
+  const dueDate =
+    typeof parsed.dueDate === "string"
+      ? parsed.dueDate
+      : row.due_at
+        ? new Date(row.due_at).toISOString().slice(0, 10)
+        : null
+  const dueTime = typeof parsed.dueTime === "string" ? parsed.dueTime : null
+  const assignee = typeof parsed.assignee === "string" ? parsed.assignee : null
+  const definitionOfDone =
+    typeof parsed.definitionOfDone === "string" ? parsed.definitionOfDone : ""
+  const subtaskCount =
+    typeof parsed.subtaskCount === "number" ? parsed.subtaskCount : 0
+  const commentCount =
+    typeof parsed.commentCount === "number" ? parsed.commentCount : 0
+  const recurring =
+    parsed.recurring === "daily" || parsed.recurring === "weekly"
+      ? parsed.recurring
+      : null
+  const someday = !!parsed.someday
+  const lastTouched =
+    typeof parsed.lastTouched === "string"
+      ? parsed.lastTouched
+      : row.updated_at || row.created_at || new Date().toISOString()
+  const createdAt = row.created_at || lastTouched
+  const nextStep = typeof parsed.nextStep === "string" ? parsed.nextStep : ""
+  const clarified = parsed.clarified === false ? false : true
+
+  return {
+    id: row.id,
+    text: row.title || "Untitled task",
+    done: (row.status || "open") === "completed",
+    priority: (
+      row.priority === "high" ||
+      row.priority === "medium" ||
+      row.priority === "low"
+        ? row.priority
+        : "medium"
+    ) as Priority,
+    project,
+    dueDate,
+    dueTime,
+    assignee,
+    definitionOfDone,
+    subtaskCount,
+    commentCount,
+    recurring,
+    someday,
+    lastTouched,
+    createdAt,
+    nextStep,
+    clarified,
+  }
+}
+
+const taskToRow = (task: Task) => {
+  const payload = {
+    project: task.project,
+    dueDate: task.dueDate,
+    dueTime: task.dueTime,
+    assignee: task.assignee,
+    definitionOfDone: task.definitionOfDone,
+    subtaskCount: task.subtaskCount,
+    commentCount: task.commentCount,
+    recurring: task.recurring,
+    someday: task.someday,
+    lastTouched: task.lastTouched,
+    createdAt: task.createdAt,
+    nextStep: task.nextStep,
+    clarified: task.clarified,
+  }
+
+  return {
+    id: task.id,
+    title: task.text,
+    notes: JSON.stringify(payload),
+    status: task.done ? "completed" : "open",
+    priority: task.priority,
+    due_at: task.dueDate
+      ? new Date(`${task.dueDate}T${task.dueTime || "00:00"}:00`).toISOString()
+      : null,
+    completed_at: task.done ? new Date().toISOString() : null,
+    is_next_action: false,
+    client_id: task.id,
+    client_updated_at: new Date().toISOString(),
+  }
+}
+
+async function ensureSupabaseProfile(user?: {
+  id: string
+  email?: string | null
+  user_metadata?: Record<string, unknown>
+} | null) {
+  if (!user?.id) return null
+
+  const displayName =
+    typeof user.user_metadata?.full_name === "string"
+      ? user.user_metadata.full_name
+      : typeof user.user_metadata?.name === "string"
+        ? user.user_metadata.name
+        : typeof user.email === "string"
+          ? user.email.split("@")[0].replace(/[._-]+/g, " ")
+          : "Alex"
+
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+  const locale = Intl.DateTimeFormat().resolvedOptions().locale || "en"
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .upsert(
+      {
+        id: user.id,
+        display_name: displayName,
+        timezone,
+        locale,
+        plan: "free",
+        onboarding_status: "not_started",
+      },
+      { onConflict: "id" },
+    )
+    .select("id, display_name, timezone, locale, plan, onboarding_status")
+    .maybeSingle()
+
+  if (error) {
+    console.error("Profile sync failed:", error)
+    return null
+  }
+
+  return data
+}
+
+async function loadSupabaseProfile(userId?: string | null) {
+  if (!userId) return null
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, timezone, locale, plan, onboarding_status")
+    .eq("id", userId)
+    .maybeSingle()
+
+  if (error) {
+    console.error("Load profile failed:", error)
+    return null
+  }
+
+  return data
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -249,7 +467,9 @@ const CHANGELOG = [
 ]
 
 function genId() {
-  return Math.random().toString(36).slice(2, 10)
+  return globalThis.crypto && "randomUUID" in globalThis.crypto
+    ? globalThis.crypto.randomUUID()
+    : Math.random().toString(36).slice(2, 10)
 }
 function todayStr() {
   return new Date().toISOString().split("T")[0]
@@ -462,6 +682,100 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const recapShownToday = useRef(false)
 
+  useEffect(() => {
+    if (phase !== "app" || !profile || profile.isGuest) return
+
+    let isMounted = true
+    const loadRemoteTasks = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user || !isMounted) return
+
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("user_id", user.id)
+
+      if (error) {
+        console.error("Load tasks failed:", error)
+        return
+      }
+
+      if (data && data.length > 0) {
+        setTasks(data.map(taskFromRow))
+      }
+    }
+
+    void loadRemoteTasks()
+    return () => {
+      isMounted = false
+    }
+  }, [phase, profile])
+
+  useEffect(() => {
+    if (phase !== "app" || !profile || profile.isGuest) return
+
+    const timeout = window.setTimeout(async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+
+      const rows = tasks.map((task) => ({
+        ...taskToRow(task),
+        user_id: user.id,
+      }))
+
+      const { error } = await supabase.from("tasks").upsert(rows, {
+        onConflict: "id",
+      })
+
+      if (error) {
+        console.error("Sync tasks failed:", error)
+      }
+    }, 250)
+
+    return () => window.clearTimeout(timeout)
+  }, [tasks, phase, profile])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const syncSignedInUser = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!isMounted || !session?.user) return
+
+      const profileRow = await ensureSupabaseProfile(session.user)
+      const row = profileRow ?? (await loadSupabaseProfile(session.user.id))
+      const nextProfile = row ? profileFromRow(row) : profileFromUser(session.user)
+      setProfile(nextProfile)
+      if (phase === "auth") setPhase("onboarding")
+    }
+
+    void syncSignedInUser()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (!session?.user || !isMounted) return
+
+        const profileRow = await ensureSupabaseProfile(session.user)
+        const row = profileRow ?? (await loadSupabaseProfile(session.user.id))
+        const nextProfile = row ? profileFromRow(row) : profileFromUser(session.user)
+        setProfile(nextProfile)
+        if (phase === "auth") setPhase("onboarding")
+      },
+    )
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
+  }, [phase])
+
   const addToast = useCallback(
     (message: string, type: ToastType = "success") => {
       const id = genId()
@@ -658,8 +972,18 @@ export default function App() {
     return (
       <ToastCtx.Provider value={addToast}>
         <OnboardingWizard
-          onComplete={(p, firstTask) => {
+          onComplete={async (p, firstTask) => {
             setProfile(p)
+
+            const {
+              data: { user },
+            } = await supabase.auth.getUser()
+            if (user) {
+              await ensureSupabaseProfile(user)
+              const profileRow = await loadSupabaseProfile(user.id)
+              if (profileRow) setProfile(profileFromRow(profileRow))
+            }
+
             if (firstTask) {
               const t: Task = {
                 id: genId(),
@@ -765,7 +1089,7 @@ export default function App() {
               className="font-semibold text-sm"
               style={{ color: "var(--foreground)" }}
             >
-              daymark
+              DayMark
             </span>
             <button
               onClick={() => setDarkMode((d) => !d)}
@@ -919,9 +1243,76 @@ export default function App() {
 
 function AuthScreen({ onComplete }: { onComplete: (p: UserProfile) => void }) {
   const [darkMode] = useLocal<boolean>("dm_dark", false)
+  const [email, setEmail] = useState("alex@example.com")
+  const toast = useToast()
+
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode)
   }, [darkMode])
+
+  const formatDisplayName = (value: string) => {
+    const trimmed = value.trim()
+    if (!trimmed) return "Alex"
+    const firstPart = trimmed.split("@")[0].replace(/[._-]+/g, " ")
+    return firstPart
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ") || "Alex"
+  }
+
+  const startGoogleOrApple = async (provider: "google" | "apple") => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: window.location.origin,
+      },
+    })
+
+    if (error) {
+      toast(`Unable to continue with ${provider}. Please try again.`, "warning")
+      return
+    }
+  }
+
+  const startMagicLink = async () => {
+    const trimmed = email.trim()
+    if (!trimmed || !trimmed.includes("@")) {
+      toast("Enter a valid email to receive your sign-in link.", "warning")
+      return
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: trimmed,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    })
+
+    if (error) {
+      toast("The magic link request failed. Please try again.", "warning")
+      return
+    }
+
+    toast("Magic link sent. Check your inbox to continue.", "success")
+  }
+
+  const authProfile = (provider: "google" | "apple" | "email") => {
+    const name =
+      provider === "email"
+        ? formatDisplayName(email)
+        : provider === "google"
+          ? "Alex"
+          : "Alex"
+
+    onComplete({
+      name,
+      isGuest: false,
+      mode: "mix",
+      decisionStyle: "important",
+      supportNeeds: ["Clear next action"],
+    })
+  }
 
   const guestProfile: UserProfile = {
     name: "Guest",
@@ -956,7 +1347,7 @@ function AuthScreen({ onComplete }: { onComplete: (p: UserProfile) => void }) {
             className="text-2xl font-bold tracking-tight"
             style={{ color: "var(--foreground)" }}
           >
-            daymark
+            DayMark
           </h1>
           <p
             className="text-[14px]"
@@ -973,47 +1364,10 @@ function AuthScreen({ onComplete }: { onComplete: (p: UserProfile) => void }) {
             border: "1px solid var(--border)",
           }}
         >
-          {[
-            {
-              icon: <GoogleIcon />,
-              label: "Continue with Google",
-              action: () =>
-                onComplete({
-                  name: "Alex",
-                  isGuest: false,
-                  mode: "mix",
-                  decisionStyle: "important",
-                  supportNeeds: [],
-                }),
-            },
-            {
-              icon: <AppleIcon />,
-              label: "Continue with Apple",
-              action: () =>
-                onComplete({
-                  name: "Alex",
-                  isGuest: false,
-                  mode: "mix",
-                  decisionStyle: "important",
-                  supportNeeds: [],
-                }),
-            },
-            {
-              icon: <MailIcon />,
-              label: "Continue with email link",
-              action: () =>
-                onComplete({
-                  name: "Alex",
-                  isGuest: false,
-                  mode: "mix",
-                  decisionStyle: "important",
-                  supportNeeds: [],
-                }),
-            },
-          ].map((btn) => (
+          <div className="space-y-3">
             <button
-              key={btn.label}
-              onClick={btn.action}
+              type="button"
+              onClick={() => startGoogleOrApple("google")}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[14px] font-medium transition-all hover:scale-[1.01] active:scale-[0.99]"
               style={{
                 background: "var(--muted)",
@@ -1021,10 +1375,58 @@ function AuthScreen({ onComplete }: { onComplete: (p: UserProfile) => void }) {
                 border: "1px solid var(--border)",
               }}
             >
-              {btn.icon}
-              {btn.label}
+              <GoogleIcon />
+              Continue with Google
             </button>
-          ))}
+
+            <button
+              type="button"
+              onClick={() => startGoogleOrApple("apple")}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[14px] font-medium transition-all hover:scale-[1.01] active:scale-[0.99]"
+              style={{
+                background: "var(--muted)",
+                color: "var(--foreground)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <AppleIcon />
+              Continue with Apple
+            </button>
+
+            <div className="space-y-2">
+              <label
+                className="block text-[11px] font-medium"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                Email for magic link
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-3 py-2.5 rounded-xl text-[13px] outline-none"
+                style={{
+                  background: "var(--muted)",
+                  color: "var(--foreground)",
+                  border: "1px solid var(--border)",
+                }}
+              />
+              <button
+                type="button"
+                onClick={startMagicLink}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[14px] font-medium transition-all hover:scale-[1.01] active:scale-[0.99]"
+                style={{
+                  background: "var(--muted)",
+                  color: "var(--foreground)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <MailIcon />
+                Continue with email link
+              </button>
+            </div>
+          </div>
 
           <div className="flex items-center gap-3 my-1">
             <div
@@ -1184,7 +1586,7 @@ function OnboardingWizard({
               className="font-semibold text-[13px]"
               style={{ color: "var(--foreground)" }}
             >
-              daymark
+              DayMark
             </span>
           </div>
           <button
@@ -1499,7 +1901,7 @@ function Sidebar({
               className="font-semibold text-[15px]"
               style={{ color: "var(--sidebar-fg)" }}
             >
-              daymark
+              DayMark
             </span>
           </div>
           <div className="flex items-center gap-1">
