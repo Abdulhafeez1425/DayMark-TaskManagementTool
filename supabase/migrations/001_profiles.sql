@@ -35,6 +35,21 @@ create policy "Profiles can be deleted by owner"
   on public.profiles for delete
   using (auth.uid() = id);
 
+create or replace function public.update_updated_at_column()
+returns trigger
+language plpgsql
+security definer
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+create trigger profiles_updated_at
+  before update on public.profiles
+  for each row execute procedure public.update_updated_at_column();
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -60,18 +75,3 @@ $$;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
-
-create or replace function public.update_updated_at_column()
-returns trigger
-language plpgsql
-security definer
-as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$;
-
-create trigger profiles_updated_at
-  before update on public.profiles
-  for each row execute procedure public.update_updated_at_column();
