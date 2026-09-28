@@ -91,3 +91,154 @@ button, input, textarea, select {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+
+/* =========================================================
+   DayMark Application Layout
+   ========================================================= */
+
+.daymark-app-shell {
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Fixed desktop sidebar */
+.daymark-sidebar-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 256px;
+  z-index: 50;
+  transition: width 0.2s ease, transform 0.2s ease;
+}
+
+.daymark-sidebar-wrapper.sidebar-collapsed {
+  width: 80px;
+}
+
+.daymark-sidebar {
+  width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Main content sits beside the fixed sidebar */
+.daymark-main {
+  min-height: 100vh;
+  margin-left: 256px;
+  min-width: 0;
+  transition: margin-left 0.2s ease;
+}
+
+.daymark-main.main-sidebar-collapsed {
+  margin-left: 80px;
+}
+
+/* Top bar */
+.daymark-topbar {
+  height: 100px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 24px 32px;
+}
+
+.daymark-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Main scrolling content */
+.daymark-content {
+  min-height: calc(100vh - 100px);
+  overflow-y: auto;
+  padding: 32px 48px 64px;
+}
+
+/* Today header alignment */
+.daymark-today-view {
+  width: 100%;
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.daymark-today-header {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto 32px;
+}
+
+.daymark-today-header .today-date {
+  margin-bottom: 8px;
+}
+
+/* Mobile sidebar backdrop */
+.daymark-sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .daymark-sidebar-wrapper {
+    width: 256px;
+    transform: translateX(-100%);
+    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.25);
+  }
+
+  .daymark-sidebar-wrapper.sidebar-mobile-open {
+    transform: translateX(0);
+  }
+
+  .daymark-sidebar-wrapper.sidebar-mobile-closed {
+    transform: translateX(-100%);
+  }
+
+  .daymark-sidebar-wrapper.sidebar-collapsed {
+    width: 256px;
+  }
+
+  .daymark-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+  }
+
+  .daymark-main,
+  .daymark-main.main-sidebar-collapsed {
+    margin-left: 0;
+  }
+
+  .daymark-topbar {
+    height: 80px;
+    padding: 18px 20px;
+  }
+
+  .daymark-content {
+    min-height: calc(100vh - 80px);
+    padding: 24px 20px 48px;
+  }
+
+  .daymark-today-header {
+    margin-bottom: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .daymark-topbar {
+    height: 72px;
+    padding: 16px;
+  }
+
+  .daymark-content {
+    min-height: calc(100vh - 72px);
+    padding: 20px 16px 40px;
+  }
+}

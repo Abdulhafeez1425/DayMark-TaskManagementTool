@@ -1028,143 +1028,152 @@ export default function App() {
     minute: "2-digit",
     hour12: true,
   })
-
-  return (
-    <ToastCtx.Provider value={addToast}>
-      <div
-        className="min-h-screen flex"
-        style={{ background: "var(--background)" }}
-      >
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-30 bg-black/50 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
+  
+      return (
+  <ToastCtx.Provider value={addToast}>
+    <div
+      className="daymark-app-shell min-h-screen"
+      style={{ background: "var(--background)" }}
+    >
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
         <div
-          className={`fixed lg:static inset-y-0 left-0 z-40 flex-shrink-0 transition-transform duration-200 ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-          } ${sidebarCollapsed ? "lg:w-20" : "lg:w-64"}`}
-          style={{ height: "100vh" }}
-        >
-          <Sidebar
-            view={view}
-            setView={(v) => {
-              setView(v)
-              setSidebarOpen(false)
-            }}
-            darkMode={darkMode}
-            setDarkMode={setDarkMode}
-            profile={profile}
-            isOnline={isOnline}
-            streak={streak}
-            collapsed={sidebarCollapsed}
-            setCollapsed={setSidebarCollapsed}
-            onLogout={handleSignOut}
-          />
-        </div>
-        <main className="flex-1 min-w-0 flex flex-col">
-          <div className="flex items-center justify-between px-4 pt-4 lg:px-6 lg:pt-6">
-            <div className="lg:hidden flex items-center gap-3">
-              <button
-                onClick={() => setSidebarOpen((s) => !s)}
-                className="p-2 rounded-xl"
-                style={{
-                  color: "var(--muted-foreground)",
-                  background: darkMode ? "#1f2937" : "#edf1f5",
-                  boxShadow: darkMode
-                    ? "8px 8px 18px rgba(15,23,42,0.45), -8px -8px 18px rgba(51,65,85,0.2)"
-                    : "8px 8px 18px rgba(163,177,198,0.35), -8px -8px 18px rgba(255,255,255,0.9)",
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <path
-                    d="M3 5h14M3 10h14M3 15h14"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </button>
-            </div>
+          className="daymark-sidebar-backdrop"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                onClick={() => setDarkMode((d) => !d)}
-                aria-label="Toggle dark mode"
-                className="flex h-11 w-11 items-center justify-center rounded-2xl border transition-all"
-                style={{
-                  color: darkMode ? "#f8fafc" : "#1f2937",
-                  background: darkMode ? "#111827" : "#eef3f8",
-                  borderColor: darkMode ? "rgba(148,163,184,0.25)" : "rgba(148,163,184,0.2)",
-                  boxShadow: darkMode
-                    ? "10px 10px 22px rgba(2,6,23,0.65), -8px -8px 18px rgba(30,41,59,0.4)"
-                    : "10px 10px 22px rgba(163,177,198,0.28), -8px -8px 18px rgba(255,255,255,0.95)",
-                }}
-              >
-                {darkMode ? <SunIcon /> : <MoonIcon />}
-              </button>
-            </div>
+      {/* Fixed sidebar */}
+      <div
+        className={`daymark-sidebar-wrapper ${
+          sidebarCollapsed ? "sidebar-collapsed" : ""
+        } ${
+          sidebarOpen ? "sidebar-mobile-open" : "sidebar-mobile-closed"
+        }`}
+      >
+        <Sidebar
+          view={view}
+          setView={(v) => {
+            setView(v)
+            setSidebarOpen(false)
+          }}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          profile={profile}
+          isOnline={isOnline}
+          streak={streak}
+          collapsed={sidebarCollapsed}
+          setCollapsed={setSidebarCollapsed}
+          onLogout={handleSignOut}
+          onToggleSidebar={() => {
+            if (window.innerWidth < 1024) {
+              setSidebarOpen((open) => !open)
+            } else {
+              setSidebarCollapsed((collapsed) => !collapsed)
+            }
+          }}
+        />
+      </div>
+
+      {/* Main application */}
+      <main
+        className={`daymark-main ${
+          sidebarCollapsed ? "main-sidebar-collapsed" : ""
+        }`}
+      >
+        {/* Top bar */}
+        <header className="daymark-topbar">
+          {/* 
+            The duplicate hamburger/menu button has intentionally
+            been removed. The sidebar controls itself now.
+          */}
+
+          <div className="daymark-topbar-actions">
+            <button
+              onClick={() => setDarkMode((d) => !d)}
+              aria-label="Toggle dark mode"
+              className="flex h-11 w-11 items-center justify-center rounded-2xl border transition-all"
+              style={{
+                color: darkMode ? "#f8fafc" : "#1f2937",
+                background: darkMode ? "#111827" : "#eef3f8",
+                borderColor: darkMode
+                  ? "rgba(148,163,184,0.25)"
+                  : "rgba(148,163,184,0.2)",
+                boxShadow: darkMode
+                  ? "10px 10px 22px rgba(2,6,23,0.65), -8px -8px 18px rgba(30,41,59,0.4)"
+                  : "10px 10px 22px rgba(163,177,198,0.28), -8px -8px 18px rgba(255,255,255,0.95)",
+              }}
+            >
+              {darkMode ? <SunIcon /> : <MoonIcon />}
+            </button>
           </div>
-          <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-10">
-            {view === "today" && (
-              <TodayView
-                tasks={tasks}
-                setTasks={setTasks}
-                projects={projects}
-                setProjects={setProjects}
-                dateStr={dateStr}
-                timeStr={timeStr}
-                now={now}
-                settings={settings}
-                updateSetting={updateSetting}
-                toggleTask={toggleTask}
-                deleteTask={deleteTask}
-                addToast={addToast}
-                restoreFromSomeday={restoreFromSomeday}
-                profile={profile}
-                streak={streak}
-                completionDays={completionDays}
-              />
-            )}
-            {view === "projects" && (
-              <ProjectsView
-                projects={projects}
-                tasks={tasks}
-                setProjects={setProjects}
-                toggleTask={toggleTask}
-                deleteTask={deleteTask}
-                addToast={addToast}
-                profile={profile}
-              />
-            )}
-            {view === "notes" && (
-              <NotesView
-                notes={notes}
-                setNotes={setNotes}
-                addToast={addToast}
-              />
-            )}
-            {view === "insights" && (
-              <InsightsView
-                tasks={tasks}
-                now={now}
-                settings={settings}
-                completionDays={completionDays}
-                streak={streak}
-              />
-            )}
-            {view === "settings" && (
-              <SettingsView
-                settings={settings}
-                updateSetting={updateSetting}
-                profile={profile}
-                setProfile={setProfile}
-              />
-            )}
-            {view === "changelog" && <ChangelogView />}
-          </div>
-        </main>
+        </header>
+
+        <div className="daymark-content">
+          {view === "today" && (
+            <TodayView
+              tasks={tasks}
+              setTasks={setTasks}
+              projects={projects}
+              setProjects={setProjects}
+              dateStr={dateStr}
+              timeStr={timeStr}
+              now={now}
+              settings={settings}
+              updateSetting={updateSetting}
+              toggleTask={toggleTask}
+              deleteTask={deleteTask}
+              addToast={addToast}
+              restoreFromSomeday={restoreFromSomeday}
+              profile={profile}
+              streak={streak}
+              completionDays={completionDays}
+            />
+          )}
+
+          {view === "projects" && (
+            <ProjectsView
+              projects={projects}
+              tasks={tasks}
+              setProjects={setProjects}
+              toggleTask={toggleTask}
+              deleteTask={deleteTask}
+              addToast={addToast}
+              profile={profile}
+            />
+          )}
+
+          {view === "notes" && (
+            <NotesView
+              notes={notes}
+              setNotes={setNotes}
+              addToast={addToast}
+            />
+          )}
+
+          {view === "insights" && (
+            <InsightsView
+              tasks={tasks}
+              now={now}
+              settings={settings}
+              completionDays={completionDays}
+              streak={streak}
+            />
+          )}
+
+          {view === "settings" && (
+            <SettingsView
+              settings={settings}
+              updateSetting={updateSetting}
+              profile={profile}
+              setProfile={setProfile}
+            />
+          )}
+
+          {view === "changelog" && <ChangelogView />}
+        </div>
+      </main>
         <ToastContainer toasts={toasts} dismiss={dismissToast} />
 
         {/* Recurring dialog */}
@@ -1506,7 +1515,7 @@ function OnboardingWizard({
         { value: "study", label: "Study", emoji: "📚" },
         { value: "projects", label: "Projects", emoji: "🚀" },
         { value: "mix", label: "A mix of everything", emoji: "✨" },
-      ] as { value: UserProfile["mode"] label: string emoji: string }[],
+      ] as { value: UserProfile["mode"]; label: string; emoji: string }[],
       value: mode,
       set: (v: string) => setMode(v as UserProfile["mode"]),
       multi: false,
@@ -1802,6 +1811,7 @@ function Sidebar({
   collapsed,
   setCollapsed,
   onLogout,
+  onToggleSidebar,
 }: {
   view: View
   setView: (v: View) => void
@@ -1813,8 +1823,9 @@ function Sidebar({
   collapsed: boolean
   setCollapsed: (v: boolean) => void
   onLogout: () => void
+  onToggleSidebar: () => void
 }) {
-  const navItems: { id: View label: string icon: React.ReactNode }[] = [
+  const navItems: { id: View; label: string; icon: React.ReactNode }[] = [
     {
       id: "today",
       label: "Today",
@@ -1886,18 +1897,16 @@ function Sidebar({
       ),
     },
   ]
-  return (
-    <aside
-      className={`flex flex-col transition-all duration-200 ${
-        collapsed ? "w-20" : "w-64"
-      }`}
-      style={{
-        background: "var(--sidebar)",
-        color: "var(--sidebar-fg)",
-        height: "100vh",
-        minHeight: "100vh",
-      }}
-    >
+ return (
+  <aside
+    className={`daymark-sidebar flex flex-col transition-all duration-200 ${
+      collapsed ? "w-20" : "w-64"
+    }`}
+    style={{
+      background: "var(--sidebar)",
+      color: "var(--sidebar-fg)",
+    }}
+  >
       <div className="px-3 pt-5 pb-4">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 overflow-hidden">
@@ -1925,8 +1934,9 @@ function Sidebar({
           </div>
 
           <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-all"
+            type="button"
+            onClick={onToggleSidebar}
+            className="daymark-sidebar-toggle flex h-8 w-8 items-center justify-center rounded-lg transition-all"
             style={{
               background: "var(--primary)",
               color: "#fff",
@@ -2269,9 +2279,9 @@ function TodayView({
   const today = now.getDay()
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
+    <div className="daymark-today-view max-w-2xl mx-auto space-y-4">
       {/* Header */}
-      <div>
+      <div className="daymark-today-header">
         <p
           className="text-[11px] font-semibold tracking-widest uppercase mb-1"
           style={{ color: "var(--muted-foreground)" }}
