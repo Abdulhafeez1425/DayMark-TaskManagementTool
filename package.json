@@ -1,5 +1,5 @@
 {
-  "name": "figma-make-app",
+  "name": "daymark-task-management-tool",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -7,7 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "format": "oxfmt"
+    "format": "oxfmt",
+    "analyze:routes": "node --experimental-strip-types scripts/analyze-routes.ts",
+    "deploy": "node --experimental-strip-types scripts/deploy.ts",
+    "deploy:preview": "node --experimental-strip-types scripts/deploy-preview.ts",
+    "install:project": "node --experimental-strip-types scripts/install.ts",
+    "langserver": "node --experimental-strip-types scripts/langserver.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.1",

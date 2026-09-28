@@ -6,23 +6,8 @@ import {
   useContext,
   useCallback,
 } from "react"
-import { createClient } from "@supabase/supabase-js"
 
-const supabaseUrl =
-  import.meta.env.VITE_SUPABASE_URL ??
-  "https://snkdhcqmpmfpvyrmhfya.supabase.co"
-const supabaseAnonKey =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ??
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNua2RoY3FtcG1mcHZ5cm1oZnlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MTM1NzMsImV4cCI6MjEwNTM4OTU3M30.LSMQyxlR4qGbHxXCvppU3D6pgJa4ZCkyla2QiKM1izs"
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  },
-})
-
+import { supabase } from "@/lib/supabase"
 const profileFromUser = (
   user?: { email?: string | null; user_metadata?: Record<string, unknown> } | null,
 ): UserProfile => ({
@@ -674,6 +659,7 @@ export default function App() {
 
   const [view, setView] = useState<View>("today")
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [toasts, setToasts] = useState<ToastMsg[]>([])
   const [now, setNow] = useState(new Date())
   const [recurringDialog, setRecurringDialog] = useState<Task | null>(null)
@@ -775,6 +761,18 @@ export default function App() {
       subscription.unsubscribe()
     }
   }, [phase])
+
+  const handleSignOut = useCallback(async () => {
+    try {
+      await supabase.auth.signOut()
+    } catch (error) {
+      console.error("Sign out failed:", error)
+    } finally {
+      setProfile(null)
+      setPhase("auth")
+      setView("today")
+    }
+  }, [])
 
   const addToast = useCallback(
     (message: string, type: ToastType = "success") => {
@@ -1044,9 +1042,10 @@ export default function App() {
           />
         )}
         <div
-          className={`fixed lg:static inset-y-0 left-0 z-40 w-56 flex-shrink-0 transition-transform duration-200 ${
+          className={`fixed lg:static inset-y-0 left-0 z-40 flex-shrink-0 transition-transform duration-200 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-          }`}
+          } ${sidebarCollapsed ? "lg:w-20" : "lg:w-64"}`}
+          style={{ height: "100vh" }}
         >
           <Sidebar
             view={view}
@@ -1059,45 +1058,53 @@ export default function App() {
             profile={profile}
             isOnline={isOnline}
             streak={streak}
-            onLogout={() => {
-              setPhase("auth")
-              setProfile(null)
-            }}
+            collapsed={sidebarCollapsed}
+            setCollapsed={setSidebarCollapsed}
+            onLogout={handleSignOut}
           />
         </div>
         <main className="flex-1 min-w-0 flex flex-col">
-          {/* Mobile topbar */}
-          <div
-            className="lg:hidden flex items-center justify-between px-4 py-3 border-b"
-            style={{ borderColor: "var(--border)", background: "var(--card)" }}
-          >
-            <button
-              onClick={() => setSidebarOpen((s) => !s)}
-              className="p-2 rounded-lg"
-              style={{ color: "var(--muted-foreground)" }}
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path
-                  d="M3 5h14M3 10h14M3 15h14"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-            <span
-              className="font-semibold text-sm"
-              style={{ color: "var(--foreground)" }}
-            >
-              DayMark
-            </span>
-            <button
-              onClick={() => setDarkMode((d) => !d)}
-              className="p-2 rounded-lg"
-              style={{ color: "var(--muted-foreground)" }}
-            >
-              {darkMode ? <SunIcon /> : <MoonIcon />}
-            </button>
+          <div className="flex items-center justify-between px-4 pt-4 lg:px-6 lg:pt-6">
+            <div className="lg:hidden flex items-center gap-3">
+              <button
+                onClick={() => setSidebarOpen((s) => !s)}
+                className="p-2 rounded-xl"
+                style={{
+                  color: "var(--muted-foreground)",
+                  background: darkMode ? "#1f2937" : "#edf1f5",
+                  boxShadow: darkMode
+                    ? "8px 8px 18px rgba(15,23,42,0.45), -8px -8px 18px rgba(51,65,85,0.2)"
+                    : "8px 8px 18px rgba(163,177,198,0.35), -8px -8px 18px rgba(255,255,255,0.9)",
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path
+                    d="M3 5h14M3 10h14M3 15h14"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={() => setDarkMode((d) => !d)}
+                aria-label="Toggle dark mode"
+                className="flex h-11 w-11 items-center justify-center rounded-2xl border transition-all"
+                style={{
+                  color: darkMode ? "#f8fafc" : "#1f2937",
+                  background: darkMode ? "#111827" : "#eef3f8",
+                  borderColor: darkMode ? "rgba(148,163,184,0.25)" : "rgba(148,163,184,0.2)",
+                  boxShadow: darkMode
+                    ? "10px 10px 22px rgba(2,6,23,0.65), -8px -8px 18px rgba(30,41,59,0.4)"
+                    : "10px 10px 22px rgba(163,177,198,0.28), -8px -8px 18px rgba(255,255,255,0.95)",
+                }}
+              >
+                {darkMode ? <SunIcon /> : <MoonIcon />}
+              </button>
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-10">
             {view === "today" && (
@@ -1792,6 +1799,8 @@ function Sidebar({
   profile,
   isOnline,
   streak,
+  collapsed,
+  setCollapsed,
   onLogout,
 }: {
   view: View
@@ -1801,6 +1810,8 @@ function Sidebar({
   profile: UserProfile | null
   isOnline: boolean
   streak: number
+  collapsed: boolean
+  setCollapsed: (v: boolean) => void
   onLogout: () => void
 }) {
   const navItems: { id: View label: string icon: React.ReactNode }[] = [
@@ -1877,15 +1888,21 @@ function Sidebar({
   ]
   return (
     <aside
-      className="flex flex-col h-full"
-      style={{ background: "var(--sidebar)", color: "var(--sidebar-fg)" }}
+      className={`flex flex-col transition-all duration-200 ${
+        collapsed ? "w-20" : "w-64"
+      }`}
+      style={{
+        background: "var(--sidebar)",
+        color: "var(--sidebar-fg)",
+        height: "100vh",
+        minHeight: "100vh",
+      }}
     >
-      {/* Logo + sync */}
-      <div className="px-5 pt-7 pb-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+      <div className="px-3 pt-5 pb-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 overflow-hidden">
             <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center"
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ background: "var(--primary)" }}
             >
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
@@ -1897,30 +1914,59 @@ function Sidebar({
                 />
               </svg>
             </div>
-            <span
-              className="font-semibold text-[15px]"
-              style={{ color: "var(--sidebar-fg)" }}
-            >
-              DayMark
-            </span>
+            {!collapsed && (
+              <span
+                className="font-semibold text-[15px] whitespace-nowrap"
+                style={{ color: "var(--sidebar-fg)" }}
+              >
+                DayMark
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-1">
-            <div
-              className="w-1.5 h-1.5 rounded-full"
-              style={{ background: isOnline ? "#10b981" : "#6b7280" }}
-            />
-            <span
-              className="text-[10px]"
-              style={{ color: "var(--sidebar-muted)" }}
-            >
-              {isOnline ? "Synced" : "Offline"}
-            </span>
-          </div>
+
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition-all"
+            style={{
+              background: "var(--primary)",
+              color: "#fff",
+              boxShadow: darkMode
+                ? "8px 8px 18px rgba(15,23,42,0.45), -6px -6px 18px rgba(51,65,85,0.18)"
+                : "8px 8px 18px rgba(163,177,198,0.35), -6px -6px 18px rgba(255,255,255,0.75)",
+            }}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path
+                d="M2 3h10M2 7h7M2 11h5"
+                stroke="white"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
         </div>
+
+        {!collapsed && (
+          <div className="mt-4 flex items-center justify-between rounded-xl px-2.5 py-2 text-[10px]" style={{ background: "rgba(255,255,255,0.04)" }}>
+            <div className="flex items-center gap-1.5">
+              <div
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ background: isOnline ? "#10b981" : "#6b7280" }}
+              />
+              <span style={{ color: "var(--sidebar-muted)" }}>
+                {isOnline ? "Synced" : "Offline"}
+              </span>
+            </div>
+            {streak > 0 && (
+              <span style={{ color: "var(--sidebar-fg)" }}>🔥 {streak}</span>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Streak badge */}
-      {streak > 0 && (
+      {streak > 0 && !collapsed && (
         <div
           className="mx-4 mb-3 px-3 py-2 rounded-xl flex items-center gap-2.5"
           style={{ background: "rgba(255,255,255,0.05)" }}
@@ -1943,31 +1989,27 @@ function Sidebar({
         </div>
       )}
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 space-y-0.5">
+      <nav className="flex-1 px-2 space-y-1">
         {navItems.map((item) => (
           <button
             key={item.id}
             onClick={() => setView(item.id)}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
+            className={`w-full flex items-center ${collapsed ? "justify-center" : "gap-3"} px-2.5 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
               view === item.id ? "bg-white/10 text-white" : "hover:bg-white/5"
             }`}
             style={{
               color: view === item.id ? "#fff" : "var(--sidebar-muted)",
             }}
+            title={collapsed ? item.label : undefined}
           >
-            {item.icon}
-            {item.label}
+            <span className={collapsed ? "text-base" : ""}>{item.icon}</span>
+            {!collapsed && item.label}
           </button>
         ))}
       </nav>
 
-      {/* Bottom */}
-      <div className="px-3 pb-5 space-y-0.5">
-        <div
-          className="mx-2 mb-3 h-px"
-          style={{ background: "rgba(255,255,255,0.07)" }}
-        />
+      <div className="px-2 pb-4 space-y-1">
+        <div className="mx-2 my-2 h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
         {[
           {
             id: "settings" as View,
@@ -2013,64 +2055,84 @@ function Sidebar({
           <button
             key={item.id}
             onClick={() => setView(item.id)}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
+            className={`w-full flex items-center ${collapsed ? "justify-center" : "gap-3"} px-2.5 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
               view === item.id ? "bg-white/10 text-white" : "hover:bg-white/5"
             }`}
+            title={collapsed ? item.label : undefined}
             style={{
               color: view === item.id ? "#fff" : "var(--sidebar-muted)",
             }}
           >
             {item.icon}
-            {item.label}
+            {!collapsed && item.label}
           </button>
         ))}
+
         <button
           onClick={() => setDarkMode(!darkMode)}
-          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all hover:bg-white/5"
+          className={`w-full flex items-center ${collapsed ? "justify-center" : "justify-between"} px-2.5 py-2.5 rounded-xl text-[13px] font-medium transition-all hover:bg-white/5`}
           style={{ color: "var(--sidebar-muted)" }}
+          title={darkMode ? "Light mode" : "Dark mode"}
         >
-          <div className="flex items-center gap-3">
+          <span className={`${collapsed ? "flex items-center justify-center" : "flex items-center gap-3"}`}>
             {darkMode ? <SunIcon /> : <MoonIcon />}
-            {darkMode ? "Light mode" : "Dark mode"}
-          </div>
-          <div
-            className="w-9 h-5 rounded-full relative"
-            style={{
-              background: darkMode
-                ? "var(--primary)"
-                : "rgba(255,255,255,0.12)",
-            }}
-          >
+            {!collapsed && (darkMode ? "Light mode" : "Dark mode")}
+          </span>
+          {!collapsed && (
             <div
-              className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${
-                darkMode ? "left-4" : "left-0.5"
-              }`}
-            />
-          </div>
+              className="w-9 h-5 rounded-full relative"
+              style={{
+                background: darkMode
+                  ? "var(--primary)"
+                  : "rgba(255,255,255,0.12)",
+              }}
+            >
+              <div
+                className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${
+                  darkMode ? "left-4" : "left-0.5"
+                }`}
+              />
+            </div>
+          )}
         </button>
-        {/* Profile */}
+
         <div
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-white/5 transition-all group"
-          onClick={onLogout}
+          className={`flex items-center ${collapsed ? "justify-center" : "gap-3"} px-2.5 py-2.5 rounded-xl transition-all`}
+          style={{ background: "rgba(255,255,255,0.03)" }}
         >
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-600 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
             {(profile?.name ?? "G")[0].toUpperCase()}
           </div>
-          <div className="min-w-0 flex-1">
-            <div
-              className="text-[12px] font-medium truncate"
-              style={{ color: "var(--sidebar-fg)" }}
-            >
-              {profile?.name ?? "Guest"}
+          {!collapsed && (
+            <div className="min-w-0 flex-1">
+              <div
+                className="text-[12px] font-medium truncate"
+                style={{ color: "var(--sidebar-fg)" }}
+              >
+                {profile?.name ?? "Guest"}
+              </div>
+              <div
+                className="text-[10px] truncate"
+                style={{ color: "var(--sidebar-muted)" }}
+              >
+                {profile?.isGuest ? "Guest mode" : "Signed in"}
+              </div>
             </div>
-            <div
-              className="text-[10px] truncate"
-              style={{ color: "var(--sidebar-muted)" }}
-            >
-              {profile?.isGuest ? "Guest mode — tap to sign in" : "Signed in"}
-            </div>
-          </div>
+          )}
         </div>
+
+        <button
+          onClick={onLogout}
+          className={`w-full flex items-center ${collapsed ? "justify-center" : "gap-3"} px-2.5 py-2.5 rounded-xl text-[13px] font-medium transition-all hover:bg-white/5`}
+          style={{ color: "var(--sidebar-muted)" }}
+          title={collapsed ? "Sign out" : undefined}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M6 3H4.5A1.5 1.5 0 003 4.5v7A1.5 1.5 0 004.5 13H6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            <path d="M10 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          {!collapsed && "Sign out"}
+        </button>
       </div>
     </aside>
   )
